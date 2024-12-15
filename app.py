@@ -1,6 +1,7 @@
 import datetime
 import streamlit as st
 import pandas as pd
+from zoneinfo import ZoneInfo
 
 
 
@@ -24,18 +25,26 @@ filter_selection = st.pills(
 )
 st.markdown(f'Your selected options: {filter_selection}.')
 
+# Override time option they were checked in. Defaults to current time
+is_override = st.checkbox('Override Time')
+override_checkin_time = None
+
 with st.form(key='my_form'):
     submitted = st.form_submit_button('Check In')
 
-    # Override time option they were checked in. Defaults to current time
-    now = datetime.datetime.now().time()
-    checkin_time = st.time_input(
-        label='Check-in Time',
-        value=datetime.time(
-            hour=now.hour,
-            minute=(now.minute // 15)*15,
-        ),
-    )
+    
+    if is_override:
+        now = datetime.datetime.now().time()
+        time_inc_minute = 10
+        override_checkin_time = st.time_input(
+            label='Check-in Time',
+            value=datetime.time(
+                hour=now.hour,
+                minute=(now.minute // time_inc_minute)*time_inc_minute,
+                tzinfo=ZoneInfo('America/Los_Angeles')
+            ),
+            step=datetime.timedelta(minutes=time_inc_minute),
+        )
 
 
     # selected_names = st.multiselect('Names', names['FullName'])
@@ -66,7 +75,7 @@ with st.form(key='my_form'):
         # Track time of actual submission
         submit_time = datetime.datetime.now().time()
         st.write(f'Submitted on {submit_time} ')
-        st.write(f'{checkin_time}')
+        st.write(f'{override_checkin_time}')
         for name, checkedin in all_names.items():
             if checkedin:
                 info = names[names['FullName'] == name]
