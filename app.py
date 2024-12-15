@@ -34,7 +34,8 @@ with st.form(key='my_form'):
 
     
     if is_override:
-        now = datetime.datetime.now().time()
+        now = datetime.datetime.now()
+        print(f'Datetime: {now=}')
         time_inc_minute = 10
         override_checkin_time = st.time_input(
             label='Check-in Time',
@@ -45,6 +46,8 @@ with st.form(key='my_form'):
             ),
             step=datetime.timedelta(minutes=time_inc_minute),
         )
+        print(f'Override: {override_checkin_time=}')
+
 
 
     # selected_names = st.multiselect('Names', names['FullName'])
