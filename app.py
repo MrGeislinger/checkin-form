@@ -2,12 +2,30 @@ import datetime
 import streamlit as st
 import pandas as pd
 from zoneinfo import ZoneInfo
+from streamlit_gsheets import GSheetsConnection
 
 
 
 # Create form to search last name
 st.title('Sign In Form')
 
+st.subheader('Students already checked in:')
+# Create a connection object.
+conn = st.connection('gsheets', type=GSheetsConnection)
+
+# df = conn.read()
+df = conn.read(
+    spreadsheet='https://docs.google.com/spreadsheets/d/1DNw8wy6j_ne2_8dnfdDxHMeI0ZwK79D1SX_PWXst1OU/edit#gid=0',
+    worksheet='372312123',
+    ttl=0,
+    # usecols=[0, 1],
+    # nrows=3,
+)
+
+# Print results.
+st.dataframe(df)
+
+st.subheader('Check in Students')
 st.write(
     'Select student names to be checked in'
 )
@@ -65,9 +83,13 @@ with st.form(key='my_form'):
         for index, name in enumerate(filtered_names['FullName']):
             col_index = index % 3
             col = cols[col_index]
+            # Checked in students are skipped
+            is_checked_in =  name in df['full name'].values
             all_names[name] = col.checkbox(
-                label=name,
+                label=f'~~{name}~~' if is_checked_in else name,
                 key=name,
+                value=is_checked_in,
+                disabled=is_checked_in,
             )
         st.divider()
 
