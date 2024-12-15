@@ -6,33 +6,48 @@ from streamlit_gsheets import GSheetsConnection
 
 
 
-# Create form to search last name
 st.title('Sign In Form')
 
+def get_already_checked_in_students(
+    cache_ttl_secs: float = 30,
+    name: str = 'gsheets',
+    conn_type = GSheetsConnection,
+) -> pd.DataFrame:
+    """Gets the students already checked in via a data source
+
+    Args:        
+        cache_ttl_secs: How long to cache the data for.
+        name: The name of the connection.
+        conn_type: The type of connection to be used.
+    Returns:
+        pd.DataFrame: The students already checked in.
+    """
+    # Create a connection object for the data base
+    conn = st.connection(
+        name=name,
+        type=conn_type,
+        ttl=cache_ttl_secs,
+    )
+
+    df = conn.read(
+        ttl=cache_ttl_secs,
+    )
+    return df
+
+df_already_checkedin = get_already_checked_in_students()
 
 
-# Create a connection object.
-conn = st.connection(
-    name='gsheets',
-    type=GSheetsConnection,
-    ttl=0,
-)
-
-df = conn.read(
-    ttl=0,
-)
-
-# Collapsible section for students already checked in
+# Collapsible section to display students already checked in
 with st.expander('Students already checked in'):
     search_term = st.text_input('Filter by name:')
     if search_term:
-        filtered_names = df[
-            df['LastName'].str.contains(search_term, case=False)
-            | df['FirstName'].str.contains(search_term, case=False)
+        filtered_names = df_already_checkedin[
+            df_already_checkedin['LastName'].str.contains(search_term, case=False)
+            | df_already_checkedin['FirstName'].str.contains(search_term, case=False)
         ]
         st.dataframe(filtered_names)
     # Print results.
-    st.dataframe(df)
+    st.dataframe(df_already_checkedin)
 
 st.subheader('Check in Students')
 st.write(
@@ -41,7 +56,6 @@ st.write(
 
 names = pd.read_csv('names.csv').sort_values(by='LastName')
 
-# options = ['Not Checked-In', 'Checked-In']
 last_name_letters = sorted(names['LastName'].str[0].unique())
 options = last_name_letters
 filter_selection = st.pills(
@@ -91,18 +105,33 @@ with st.form(key='my_form'):
         for index, name in enumerate(filtered_names['FullName']):
             col_index = index % 3
             col = cols[col_index]
-            # Checked in students are skipped
-            is_checked_in =  name in df['FullName'].values
-            all_names[name] = col.checkbox(
-                label=f'~~{name}~~' if is_checked_in else name,
-                key=name,
-                value=is_checked_in,
-                disabled=is_checked_in,
+            # Checked in students are not selectable or to be written to DB
+            is_already_checked_in = (
+                name in df_already_checkedin['FullName'].values
             )
+            if is_already_checked_in:
+                label_info = f'~~{name}~~'
+                # Include when checked in
+                time_checkedin = (
+                    df_already_checkedin
+                    [df_already_checkedin['FullName'] == name]
+                    ["SubmitTime"]
+                    .values[0]
+                    # .loc[0]
+                )
+                label_info += f' [{time_checkedin}]'
+            else:
+                label_info = f'{name}'
+            student_checked = col.checkbox(
+                label=label_info,
+                key=name,
+                value=is_already_checked_in,
+                disabled=is_already_checked_in,
+            )
+            # Only need to track students already checked in
+            if not is_already_checked_in:
+                all_names[name] = student_checked
         st.divider()
-
-            
-
     
     if submitted:
         # Track time of actual submission
