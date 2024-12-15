@@ -9,21 +9,30 @@ from streamlit_gsheets import GSheetsConnection
 # Create form to search last name
 st.title('Sign In Form')
 
-st.subheader('Students already checked in:')
-# Create a connection object.
-conn = st.connection('gsheets', type=GSheetsConnection)
 
-# df = conn.read()
-df = conn.read(
-    spreadsheet='https://docs.google.com/spreadsheets/d/1DNw8wy6j_ne2_8dnfdDxHMeI0ZwK79D1SX_PWXst1OU/edit#gid=0',
-    worksheet='372312123',
+
+# Create a connection object.
+conn = st.connection(
+    name='gsheets',
+    type=GSheetsConnection,
     ttl=0,
-    # usecols=[0, 1],
-    # nrows=3,
 )
 
-# Print results.
-st.dataframe(df)
+df = conn.read(
+    ttl=0,
+)
+
+# Collapsible section for students already checked in
+with st.expander('Students already checked in'):
+    search_term = st.text_input('Filter by name:')
+    if search_term:
+        filtered_names = df[
+            df['LastName'].str.contains(search_term, case=False)
+            | df['FirstName'].str.contains(search_term, case=False)
+        ]
+        st.dataframe(filtered_names)
+    # Print results.
+    st.dataframe(df)
 
 st.subheader('Check in Students')
 st.write(
@@ -67,7 +76,6 @@ with st.form(key='my_form'):
         print(f'Override: {override_checkin_time=}')
 
 
-
     # selected_names = st.multiselect('Names', names['FullName'])
     all_names = {}
 
@@ -84,7 +92,7 @@ with st.form(key='my_form'):
             col_index = index % 3
             col = cols[col_index]
             # Checked in students are skipped
-            is_checked_in =  name in df['full name'].values
+            is_checked_in =  name in df['FullName'].values
             all_names[name] = col.checkbox(
                 label=f'~~{name}~~' if is_checked_in else name,
                 key=name,
