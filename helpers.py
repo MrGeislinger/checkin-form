@@ -73,6 +73,7 @@ def get_checked_in_students(
         df = df[df['SubmitDate'] == date]
     
     # Filter by time period
+    # TODO: Determine if SubmitTime or OverrideTime should be used
     if time_period == TimePeriod.MORNING:
         df = df[pd.to_datetime(df['SubmitTime']).dt.hour < 9]
     elif time_period == TimePeriod.AFTERNOON:

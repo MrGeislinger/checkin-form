@@ -182,9 +182,9 @@ with st.form(key='my_form'):
 
             results_container.write('Updated with new checkins:')
             # Make sure we refresh to reflect changes
-            refresh_time_secs = 15
+            refresh_time_secs = 5
             results_container.write(
-                '*Waiting {refresh_time_secs} seconds before refreshing page*'
+                f'*Waiting {refresh_time_secs} seconds before refreshing page*'
             )
             results_container.write(results_df)
             time.sleep(refresh_time_secs)
