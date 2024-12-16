@@ -39,6 +39,15 @@ st.subheader(
 results_container = st.container()
 
 names = pd.read_csv('names.csv').sort_values(by='LastName')
+conn_to_student_roster = helpers.create_connection(
+    name='studentinfo',
+    conn_type=GSheetsConnection,
+    cache_ttl_secs=60,
+)
+
+names = conn_to_student_roster.read(
+    ttl=60,
+)
 
 last_name_letters = sorted(names['LastName'].str[0].unique())
 
