@@ -38,7 +38,6 @@ st.subheader(
 
 results_container = st.container()
 
-names = pd.read_csv('names.csv').sort_values(by='LastName')
 conn_to_student_roster = helpers.create_connection(
     name='studentinfo',
     conn_type=GSheetsConnection,
