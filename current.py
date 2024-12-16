@@ -11,7 +11,7 @@ conn_to_gsheet = helpers.create_connection(
     conn_type=GSheetsConnection,
     cache_ttl_secs=0,
 )
-df_already_checkedin = helpers.get_already_checked_in_students(
+df_already_checkedin = helpers.get_checked_in_students(
     date=current_time.strftime('%Y-%m-%d'),
     conn=conn_to_gsheet,
     cache_ttl_secs=0,
@@ -25,8 +25,22 @@ st.dataframe(df_already_checkedin)
 st.divider()
 
 st.subheader('Students this morning')
-
+df_checkedin_morning = helpers.get_checked_in_students(
+    date=current_time.strftime('%Y-%m-%d'),
+    time_period=helpers.TimePeriod.MORNING,
+    conn=conn_to_gsheet,
+    cache_ttl_secs=0,
+)
+st.dataframe(df_checkedin_morning)
 
 st.subheader('Students this afternoon')
+
+df_checkedin_afternoon = helpers.get_checked_in_students(
+    date=current_time.strftime('%Y-%m-%d'),
+    time_period=helpers.TimePeriod.AFTERNOON,
+    conn=conn_to_gsheet,
+    cache_ttl_secs=0,
+)
+st.dataframe(df_checkedin_afternoon)
 
 st.divider()

@@ -1,7 +1,16 @@
-import streamlit as st
 import datetime
+from enum import Enum
 import pandas as pd
+import streamlit as st
 from streamlit_gsheets import GSheetsConnection
+
+
+class TimePeriod(Enum):
+    MORNING = 'morning'
+    AFTERNOON = 'afternoon'
+    
+    def __str__(self):
+        return self.value
 
 
 
@@ -40,8 +49,9 @@ def write_to_data_store(
     return result_data
 
 
-def get_already_checked_in_students(
+def get_checked_in_students(
     conn,
+    time_period: TimePeriod = TimePeriod.MORNING,
     date: datetime.datetime = None,
     cache_ttl_secs: float = 30,
 ) -> pd.DataFrame:
@@ -61,6 +71,13 @@ def get_already_checked_in_students(
     # Filter only the date specified
     if date:
         df = df[df['SubmitDate'] == date]
+    
+    # Filter by time period
+    if time_period == TimePeriod.MORNING:
+        df = df[pd.to_datetime(df['SubmitTime']).dt.hour < 9]
+    elif time_period == TimePeriod.AFTERNOON:
+        df = df[pd.to_datetime(df['SubmitTime']).dt.hour >= 9]
+
 
     return df
 

@@ -7,6 +7,11 @@ import time
 from zoneinfo import ZoneInfo
 
 current_time = datetime.datetime.now(tz=ZoneInfo('America/Los_Angeles'))
+time_period = (
+    helpers.TimePeriod.MORNING
+    if current_time.hour < 9
+    else helpers.TimePeriod.AFTERNOON
+)
 
 conn_to_gsheet = helpers.create_connection(
     name='gsheets',
@@ -14,8 +19,9 @@ conn_to_gsheet = helpers.create_connection(
     cache_ttl_secs=0,
 )
 
-df_already_checkedin = helpers.get_already_checked_in_students(
+df_already_checkedin = helpers.get_checked_in_students(
     date=current_time.strftime('%Y-%m-%d'),
+    time_period=time_period,
     conn=conn_to_gsheet,
     cache_ttl_secs=0,
 )
@@ -24,14 +30,10 @@ df_already_checkedin = helpers.get_already_checked_in_students(
 
 st.title('Student Check-In')
 
-time_period = (
-    'morning'
-    if current_time.hour < 9
-    else 'afternoon'
-)
+
 
 st.subheader(
-    f'Check-in for **{current_time.date()}** *{time_period.capitalize()}*'
+    f'Check-in for **{current_time.date()}** *{time_period}*'
 )
 
 results_container = st.container()
@@ -140,7 +142,7 @@ with st.form(key='my_form'):
             student_data['LastName'] = info['LastName'].values[0]
             student_data['Grade'] = str(info['Grade'].values[0])
             student_data['SubmitTime'] = (
-                submit_time.strftime('%HH:%M:%S')
+                submit_time.strftime('%H:%M:%S')
             )
             student_data['SubmitDate'] = (
                 current_time.strftime('%Y-%m-%d')
