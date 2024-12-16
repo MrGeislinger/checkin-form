@@ -6,6 +6,7 @@ from streamlit_gsheets import GSheetsConnection
 import time
 from zoneinfo import ZoneInfo
 
+current_time = datetime.datetime.now(tz=ZoneInfo('America/Los_Angeles'))
 
 conn_to_gsheet = helpers.create_connection(
     name='gsheets',
@@ -14,6 +15,7 @@ conn_to_gsheet = helpers.create_connection(
 )
 
 df_already_checkedin = helpers.get_already_checked_in_students(
+    date=current_time.strftime('%Y-%m-%d'),
     conn=conn_to_gsheet,
     cache_ttl_secs=0,
 )
@@ -22,7 +24,6 @@ df_already_checkedin = helpers.get_already_checked_in_students(
 
 st.title('Student Check-In')
 
-current_time = datetime.datetime.now(tz=ZoneInfo('America/Los_Angeles'))
 time_period = (
     'morning'
     if current_time.hour < 9
@@ -140,6 +141,9 @@ with st.form(key='my_form'):
             student_data['Grade'] = str(info['Grade'].values[0])
             student_data['SubmitTime'] = (
                 submit_time.strftime('%HH:%M:%S')
+            )
+            student_data['SubmitDate'] = (
+                current_time.strftime('%Y-%m-%d')
             )
             student_data['OverrideTime'] = (
                 None if not is_override else override_checkin_time

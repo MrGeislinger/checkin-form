@@ -1,4 +1,5 @@
 import streamlit as st
+import datetime
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 
@@ -41,21 +42,25 @@ def write_to_data_store(
 
 def get_already_checked_in_students(
     conn,
+    date: datetime.datetime = None,
     cache_ttl_secs: float = 30,
 ) -> pd.DataFrame:
     """Gets the students already checked in via a data source
 
     Args:        
-        cache_ttl_secs: How long to cache the data for.
-        name: The name of the connection.
         conn: Connection to be used.
+        date: Date to filter by.
+        cache_ttl_secs: How long to cache the data for.
     Returns:
         pd.DataFrame: The students already checked in.
     """
     # Create a connection object for the data base
-
     df = conn.read(
         ttl=cache_ttl_secs,
     )
+    # Filter only the date specified
+    if date:
+        df = df[df['SubmitDate'] == date]
+
     return df
 
