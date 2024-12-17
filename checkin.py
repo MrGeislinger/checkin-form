@@ -14,12 +14,12 @@ time_period = (
 )
 
 conn_to_gsheet = helpers.create_connection(
-    name='gsheets',
+    name='checkin',
     conn_type=GSheetsConnection,
     cache_ttl_secs=0,
 )
 
-df_already_checkedin = helpers.get_checked_in_students(
+df_already_checkedin = helpers.get_students(
     date=current_time.strftime('%Y-%m-%d'),
     time_period=time_period,
     conn=conn_to_gsheet,
@@ -197,11 +197,12 @@ with st.form(key='my_form'):
                 conn=conn_to_gsheet,
                 data=helpers.dataframe_to_list(df_new_checkins),
                 spreadsheet_url=(
-                    st.secrets.connections.gsheets.spreadsheet
+                    st.secrets.connections.checkin.spreadsheet
                 ),
-                worksheet='checkin',
+                worksheet='checkins',
             )
     
+            results_container.success('Students checked in successfully!')
             results_container.write('Updated with new check-ins:')
             # Make sure we refresh to reflect changes
             refresh_time_secs = 5

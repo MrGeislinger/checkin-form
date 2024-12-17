@@ -98,8 +98,9 @@ def write_to_data_store(
     return result_data
 
 
-def get_checked_in_students(
+def get_students(
     conn,
+    worksheet: str | int | None = None,
     time_period: TimePeriod = TimePeriod.MORNING,
     date: datetime.datetime = None,
     cache_ttl_secs: float = 30,
@@ -115,6 +116,7 @@ def get_checked_in_students(
     """
     # Create a connection object for the data base
     df = conn.read(
+        worksheet=worksheet,
         ttl=cache_ttl_secs,
     )
     # Filter only the date specified
