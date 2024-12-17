@@ -162,30 +162,47 @@ with st.form(key='my_form'):
 
             
         if new_checkins_data:
-            df_new_checkins = pd.DataFrame(new_checkins_data)
-            # Merge current with old checkins – should never have duplicates
-            merged_df = pd.concat(
-                [
-                    df_already_checkedin,
-                    df_new_checkins,
-                ],
-                ignore_index=True,
-            ).sort_values(
-                by='SubmitTime',
-                ascending=False,
+            df_new_checkins = (
+                pd.DataFrame(
+                    new_checkins_data,
+                )
+                .astype(
+                    {'Grade': str},
+                )
+                .sort_values(
+                    by='SubmitTime',
+                    ascending=False,
+                )
             )
+            # Sort the columns in specified order
+            columns = [
+                'SubmitTime',
+                'SubmitDate',
+                'OverrideTime',
+                'FullName',
+                'LastName',
+                'FirstName',
+                'Grade',
+            ]
+            df_new_checkins = df_new_checkins[columns]
 
-            results_df = helpers.write_to_data_store(
+
+            # Convert DF to a list of list (we can ignore the header)
+            helpers.append_data_to_sheet(
                 conn=conn_to_gsheet,
-                data=merged_df,
+                data=helpers.dataframe_to_list(df_new_checkins),
+                spreadsheet_url=(
+                    st.secrets.connections.gsheets.spreadsheet
+                ),
+                worksheet='checkin',
             )
-
-            results_container.write('Updated with new checkins:')
+    
+            results_container.write('Updated with new check-ins:')
             # Make sure we refresh to reflect changes
             refresh_time_secs = 5
             results_container.write(
                 f'*Waiting {refresh_time_secs} seconds before refreshing page*'
             )
-            results_container.write(results_df)
+            results_container.write(df_new_checkins)
             time.sleep(refresh_time_secs)
             st.rerun(scope='app')

@@ -1,8 +1,10 @@
 import datetime
 from enum import Enum
+import gspread
 import pandas as pd
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
+from typing import Iterable
 
 
 class TimePeriod(Enum):
@@ -35,6 +37,53 @@ def create_connection(
         ttl=cache_ttl_secs,
     )
     return conn
+
+def dataframe_to_list(
+    df: pd.DataFrame
+) -> list[list[str]]:
+    """Converts DataFrame to a list of list where each element is a string.
+
+    Args:
+        df: DataFrame to convert.
+    Returns:
+        list[list[str]]: List of list of strings.
+    """
+    data = df.values.tolist()
+    # Make sure any None values go to blank strings
+    data_clean = [
+        [
+            '' if value is None 
+            else str(value)
+            for value in row
+        ]
+        for row in data
+    ]
+    return data_clean
+
+
+def append_data_to_sheet(
+    conn: GSheetsConnection,
+    data: Iterable[list[str]],
+    spreadsheet_url: str,
+    worksheet: str,
+) -> None:
+    """Appends a list of data to specified Google Sheet
+
+    Args:
+        conn: Connection object to Google Sheet
+        data: Data to append at the end of spreadsheet
+        spreadsheet: Name of spreadsheet
+        worksheet: Name of worksheet
+    """
+    # Hack to use gspread using streamlit's version
+    gc = conn._instance._client
+    # Open specific spreadsheet and tab
+    sh = gc.open_by_url(
+        url=spreadsheet_url
+    )
+    sh = sh.worksheet(worksheet)  
+    # Append all rows of data
+    sh.append_rows(values=data)
 
 
 def write_to_data_store(
