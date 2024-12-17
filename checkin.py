@@ -133,7 +133,12 @@ with st.form(key='my_form'):
     
     if submitted:
         # Track time of actual submission
-        submit_time = datetime.datetime.now().time()
+        submit_time = (
+            datetime.datetime.now(
+                tz=ZoneInfo('America/Los_Angeles'),
+            )
+            .time()
+        )
         st.write(f'Submitted on {submit_time} ')
         st.write(f'{override_checkin_time}')
         
