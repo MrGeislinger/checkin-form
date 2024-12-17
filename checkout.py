@@ -42,8 +42,6 @@ df_already_checkedout = helpers.get_students(
     worksheet='checkouts',
 )
 
-conn_to_gsheet_checkin.read()
-
 ############
 
 
