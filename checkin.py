@@ -41,11 +41,11 @@ results_container = st.container()
 conn_to_student_roster = helpers.create_connection(
     name='studentinfo',
     conn_type=GSheetsConnection,
-    cache_ttl_secs=60,
+    cache_ttl_secs=(60 * 60 * 24),  # Reserve for the day 
 )
 
 names = conn_to_student_roster.read(
-    ttl=60,
+    ttl=(60 * 60 * 24),  # Reserve for the day 
 )
 
 last_name_letters = sorted(names['LastName'].str[0].unique())

@@ -18,27 +18,27 @@ time_period = (
 conn_to_gsheet_checkin = helpers.create_connection(
     name='checkin',
     conn_type=GSheetsConnection,
-    cache_ttl_secs=60,
+    cache_ttl_secs=(60 * 5),  # 5 minutes
 )
 
 df_already_checkedin = helpers.get_students(
     date=current_time.strftime('%Y-%m-%d'),
     time_period=time_period,
     conn=conn_to_gsheet_checkin,
-    cache_ttl_secs=60,
+    cache_ttl_secs=(60 * 5),  # 5 minutes
 )
 
 conn_to_gsheet_checkout = helpers.create_connection(
     name='checkout',
     conn_type=GSheetsConnection,
-    cache_ttl_secs=10,
+    cache_ttl_secs=15,
 )
 
 df_already_checkedout = helpers.get_students(
     date=current_time.strftime('%Y-%m-%d'),
     time_period=time_period,
     conn=conn_to_gsheet_checkout,
-    cache_ttl_secs=10,
+    cache_ttl_secs=15,
     worksheet='checkouts',
 )
 
