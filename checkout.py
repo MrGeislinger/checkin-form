@@ -45,19 +45,11 @@ df_already_checkedout = helpers.get_students(
 ############
 
 
-
 st.title('Check Out Students ')
 st.subheader(
     f'Check-out for **{current_time.date()}** *{time_period}*'
 )
 
-st.subheader('Students already checked in')
-st.write(df_already_checkedin)
-
-st.subheader('Students already checked out')
-st.write(df_already_checkedout)
-
-st.subheader('Students still present')
 # Only students currently checked-in for the time period but not yet checked out
 df_to_checkout = df_already_checkedin[
     ~(
@@ -67,7 +59,6 @@ df_to_checkout = df_already_checkedin[
         )
     )
 ]
-st.dataframe(df_to_checkout)
 
 results_container = st.container()
 
@@ -127,3 +118,13 @@ with st.form(key='checkout_form'):
         else:
             st.warning('Please select at least one student to check out.')
 
+st.divider()
+
+st.subheader('Students still present')
+st.dataframe(df_to_checkout)
+
+st.subheader('Students already checked in')
+st.write(df_already_checkedin)
+
+st.subheader('Students already checked out')
+st.write(df_already_checkedout)
