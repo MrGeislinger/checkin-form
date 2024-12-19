@@ -6,6 +6,9 @@ import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 from typing import Iterable
 
+SECS_IN_DAY: int = 60 * 60 * 24
+SECS_IN_HOUR: int = 60 * 60
+
 
 class TimePeriod(Enum):
     MORNING = 'morning'
@@ -14,18 +17,36 @@ class TimePeriod(Enum):
     def __str__(self):
         return self.value
 
+@st.cache_data(
+    max_entries=1,
+    persist=True,
+    show_spinner='Fetching Student Roster'
+)
+def get_student_roster(
+    name: str = 'studentinfo',
+    cache_ttl_secs: float = SECS_IN_DAY,
+) -> pd.DataFrame:
+    conn_to_student_roster = create_connection(
+        name=name,
+        cache_ttl_secs=cache_ttl_secs,
+    )
+
+    names = conn_to_student_roster.read(
+        ttl=cache_ttl_secs,
+    )
+
+    return names
 
 
+@st.cache_resource
 def create_connection(
     name: str = 'gsheets',
-    conn_type = GSheetsConnection,
-    cache_ttl_secs: float = 30,
+    cache_ttl_secs: float = SECS_IN_DAY,
 ):
     """Creates a connection to a data source.
 
     Args:        
         name: The name of the connection.
-        conn_type: The type of connection to be used.
         cache_ttl_secs: How long to cache the data for.
     Returns:
         conn: Connection object to data source.
@@ -33,11 +54,12 @@ def create_connection(
     # Create a connection object for the data base
     conn = st.connection(
         name=name,
-        type=conn_type,
+        type=GSheetsConnection,
         ttl=cache_ttl_secs,
     )
     return conn
 
+@st.cache_data
 def dataframe_to_list(
     df: pd.DataFrame
 ) -> list[list[str]]:
@@ -85,18 +107,53 @@ def append_data_to_sheet(
     # Append all rows of data
     sh.append_rows(values=data)
 
-
-def write_to_data_store(
-    conn,
-    data: list[dict[str, str]] | pd.DataFrame,
+@st.cache_data(
+    show_spinner='Fetching checked in students',
+)
+def get_checked_in_students(
+    last_check_in_time: float,
+    date: str,
+    time_period: TimePeriod,
+    spreadsheet: str = 'checkin',
+    worksheet: str = 'checkins',
+    cache_ttl_secs: int | None = None,
 ):
-    # pass
-    result_data = conn.update(
-        # worksheet='checkin',
-        data=data,
+    print(f'Prior check in time: {last_check_in_time}')
+    conn_to_gsheet = create_connection(
+        name=spreadsheet,
     )
-    return result_data
+    df = get_students(
+        conn=conn_to_gsheet,
+        worksheet=worksheet,
+        time_period=time_period,
+        date=date,
+        cache_ttl_secs=cache_ttl_secs,
+    )
+    return df
 
+@st.cache_data(
+    show_spinner='Fetching checked out students',
+)
+def get_checked_out_students(
+    last_check_out_time: float,
+    date: str,
+    time_period: TimePeriod,
+    spreadsheet: str = 'checkout',
+    worksheet: str = 'checkouts',
+    cache_ttl_secs: int | None = None,
+):
+    print(f'Prior check out time: {last_check_out_time}')
+    conn_to_gsheet = create_connection(
+        name=spreadsheet,
+    )
+    df = get_students(
+        conn=conn_to_gsheet,
+        worksheet=worksheet,
+        time_period=time_period,
+        date=date,
+        cache_ttl_secs=cache_ttl_secs,
+    )
+    return df
 
 def get_students(
     conn,
@@ -109,6 +166,8 @@ def get_students(
 
     Args:        
         conn: Connection to be used.
+        worksheet: Spreadsheet tab. Otherwise uses first tab.
+        time_period: TimePeriod.MORNING or TimePeriod.AFTERNOON.
         date: Date to filter by.
         cache_ttl_secs: How long to cache the data for.
     Returns:

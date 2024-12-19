@@ -14,32 +14,30 @@ time_period = (
     else helpers.TimePeriod.AFTERNOON
 )
 
+# Session state default if first time opening up app
+if 'last_check_in_time' not in st.session_state:
+    st.session_state['last_check_in_time'] = None
+if 'last_check_out_time' not in st.session_state:
+    st.session_state['last_check_out_time'] = current_time.timestamp()
+if 'checkout_conn' not in st.session_state:
+    st.session_state['checkout_conn'] = helpers.create_connection(
+        name='checkout',
+    )
+print(f'{st.session_state.last_check_in_time=}')
+print(f'{st.session_state.last_check_out_time=}')
 
-conn_to_gsheet_checkin = helpers.create_connection(
-    name='checkin',
-    conn_type=GSheetsConnection,
-    cache_ttl_secs=(60 * 5),  # 5 minutes
-)
 
-df_already_checkedin = helpers.get_students(
+df_already_checkedin = helpers.get_checked_in_students(
+    last_check_in_time=st.session_state['last_check_in_time'],
     date=current_time.strftime('%Y-%m-%d'),
     time_period=time_period,
-    conn=conn_to_gsheet_checkin,
-    cache_ttl_secs=(60 * 5),  # 5 minutes
 )
 
-conn_to_gsheet_checkout = helpers.create_connection(
-    name='checkout',
-    conn_type=GSheetsConnection,
-    cache_ttl_secs=15,
-)
 
-df_already_checkedout = helpers.get_students(
+df_already_checkedout = helpers.get_checked_out_students(
+    last_check_out_time=st.session_state['last_check_out_time'],
     date=current_time.strftime('%Y-%m-%d'),
     time_period=time_period,
-    conn=conn_to_gsheet_checkout,
-    cache_ttl_secs=15,
-    worksheet='checkouts',
 )
 
 ############
@@ -72,7 +70,7 @@ with st.form(key='checkout_form'):
     if checkout_submitted:
         if selected_names:
             # Add checkout time
-            checkout_time = datetime.datetime.now(
+            submit_time = datetime.datetime.now(
                 tz=ZoneInfo('America/Los_Angeles')
             ).time()
             checkout_data = []
@@ -83,7 +81,7 @@ with st.form(key='checkout_form'):
                 student_data['FirstName'] = info['FirstName'].values[0]
                 student_data['LastName'] = info['LastName'].values[0]
                 student_data['Grade'] = str(info['Grade'].values[0])
-                student_data['SubmitTime'] = checkout_time.strftime('%H:%M:%S')
+                student_data['SubmitTime'] = submit_time.strftime('%H:%M:%S')
                 student_data['SubmitDate'] = current_time.strftime('%Y-%m-%d')
                 student_data['OverrideTime'] = None
                 checkout_data.append(student_data)
@@ -102,11 +100,14 @@ with st.form(key='checkout_form'):
 
             # Convert DF to a list of list (we can ignore the header)
             helpers.append_data_to_sheet(
-                conn=conn_to_gsheet_checkout,
+                conn=st.session_state['checkout_conn'],
                 data=helpers.dataframe_to_list(df_checkout),
                 spreadsheet_url=st.secrets.connections.checkout.spreadsheet,
                 worksheet='checkouts',
             )
+            # Update that a check out occurred
+            st.session_state['last_check_out_time'] = submit_time
+
             refresh_time_secs = 5
             results_container.success('Students checked out successfully!')
             results_container.write(

@@ -13,17 +13,22 @@ time_period = (
     else helpers.TimePeriod.AFTERNOON
 )
 
-conn_to_gsheet = helpers.create_connection(
-    name='checkin',
-    conn_type=GSheetsConnection,
-    cache_ttl_secs=0,
-)
+# Session state to track the last time a check in was done
+if 'last_check_in_time' not in st.session_state:
+    st.session_state['last_check_in_time'] = None
+if 'last_check_out_time' not in st.session_state:
+    st.session_state['last_check_out_time'] = current_time.timestamp()
+if 'checkin_conn' not in st.session_state:
+    st.session_state['checkin_conn'] = helpers.create_connection(
+        name='checkin',
+    )
+print(f'{st.session_state.last_check_in_time=}')
+print(f'{st.session_state.last_check_out_time=}')
 
-df_already_checkedin = helpers.get_students(
+df_already_checkedin = helpers.get_checked_in_students(
+    last_check_in_time=st.session_state['last_check_in_time'],
     date=current_time.strftime('%Y-%m-%d'),
     time_period=time_period,
-    conn=conn_to_gsheet,
-    cache_ttl_secs=0,
 )
 
 ############
@@ -38,14 +43,9 @@ st.subheader(
 
 results_container = st.container()
 
-conn_to_student_roster = helpers.create_connection(
+names = helpers.get_student_roster(
     name='studentinfo',
-    conn_type=GSheetsConnection,
-    cache_ttl_secs=(60 * 60 * 24),  # Reserve for the day 
-)
-
-names = conn_to_student_roster.read(
-    ttl=(60 * 60 * 24),  # Reserve for the day 
+    cache_ttl_secs=helpers.SECS_IN_DAY,
 )
 
 last_name_letters = sorted(names['LastName'].str[0].unique())
@@ -194,13 +194,16 @@ with st.form(key='my_form'):
 
             # Convert DF to a list of list (we can ignore the header)
             helpers.append_data_to_sheet(
-                conn=conn_to_gsheet,
+                conn=st.session_state['checkin_conn'],
                 data=helpers.dataframe_to_list(df_new_checkins),
                 spreadsheet_url=(
                     st.secrets.connections.checkin.spreadsheet
                 ),
                 worksheet='checkins',
             )
+
+            # Update that a check in occurred
+            st.session_state['last_check_in_time'] = submit_time
     
             results_container.success('Students checked in successfully!')
             results_container.write('Updated with new check-ins:')

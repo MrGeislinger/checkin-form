@@ -6,46 +6,41 @@ from zoneinfo import ZoneInfo
 
 current_time = datetime.datetime.now(tz=ZoneInfo('America/Los_Angeles'))
 
-conn_to_gsheet_checkin = helpers.create_connection(
-    name='checkin',
-    conn_type=GSheetsConnection,
-    cache_ttl_secs=10,
-)
+# Session state default if first time opening up app
+if 'last_check_in_time' not in st.session_state:
+    st.session_state['last_check_in_time'] = None
+if 'last_check_out_time' not in st.session_state:
+    st.session_state['last_check_out_time'] = current_time.timestamp()
+if 'checkout_conn' not in st.session_state:
+    st.session_state['checkout_conn'] = helpers.create_connection(
+        name='checkout',
+    )
+print(f'{st.session_state.last_check_in_time=}')
+print(f'{st.session_state.last_check_out_time=}')
 
-df_already_checkedin_morning = helpers.get_students(
+df_already_checkedin_morning = helpers.get_checked_in_students(
     date=current_time.strftime('%Y-%m-%d'),
     time_period=helpers.TimePeriod.MORNING,
-    conn=conn_to_gsheet_checkin,
-    cache_ttl_secs=10,
+    last_check_in_time=st.session_state['last_check_in_time'],
 )
 
-df_already_checkedin_afternoon = helpers.get_students(
+df_already_checkedin_afternoon = helpers.get_checked_in_students(
     date=current_time.strftime('%Y-%m-%d'),
     time_period=helpers.TimePeriod.AFTERNOON,
-    conn=conn_to_gsheet_checkin,
-    cache_ttl_secs=10,
+    last_check_in_time=st.session_state['last_check_in_time'],
 )
 
-conn_to_gsheet_checkout = helpers.create_connection(
-    name='checkout',
-    conn_type=GSheetsConnection,
-    cache_ttl_secs=10,
-)
 
-df_already_checkedout_morning = helpers.get_students(
+df_already_checkedout_morning = helpers.get_checked_out_students(
     date=current_time.strftime('%Y-%m-%d'),
     time_period=helpers.TimePeriod.MORNING,
-    conn=conn_to_gsheet_checkout,
-    cache_ttl_secs=10,
-    worksheet='checkouts',
+    last_check_out_time=st.session_state['last_check_out_time'],
 )
 
-df_already_checkedout_afternoon = helpers.get_students(
+df_already_checkedout_afternoon = helpers.get_checked_out_students(
     date=current_time.strftime('%Y-%m-%d'),
     time_period=helpers.TimePeriod.AFTERNOON,
-    conn=conn_to_gsheet_checkout,
-    cache_ttl_secs=10,
-    worksheet='checkouts',
+    last_check_out_time=st.session_state['last_check_out_time'],
 )
 
 ######
