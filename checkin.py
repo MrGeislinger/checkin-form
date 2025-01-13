@@ -95,11 +95,21 @@ with st.form(key='my_form'):
     for letter in last_name_letters:
         st.subheader(letter)
         filtered_names = names[names['LastName'].str.startswith(letter)]
-        filtered_names = filtered_names.sort_values(by='FullName')
+        filtered_names = filtered_names.sort_values(
+            by=['LastName', 'FirstName'],
+        )
         # Split names into three columns to be displayed
-        cols = st.columns(3)
+        n_cols = 3
+        cols = st.columns(n_cols)
+        # Calculate the total number of names in grouping
+        n_names_in_group = len(filtered_names)
+        # Calculate the number of names per column (rounding up)
+        names_per_col = (n_names_in_group + n_cols - 1) // n_cols
+        col_index = -1
         for index, name in enumerate(filtered_names['FullName']):
-            col_index = index % 3
+            if index % names_per_col == 0:
+                col_index += 1
+                
             col = cols[col_index]
             # Checked in students are not selectable or to be written to DB
             is_already_checked_in = (
