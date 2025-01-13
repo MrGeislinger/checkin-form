@@ -31,7 +31,9 @@ if st.session_state.get('last_date', None) != current_time.strftime('%Y-%m-%d'):
     refresh_cache = True
 
 cache_name_checkin = f'checkedin_df_{st.session_state["time_period"]}'
+cache_name_checkout = f'checkedout_df_{st.session_state["time_period"]}'
 
+# Checkin data
 if refresh_cache or (cache_name_checkin not in st.session_state):
     df_already_checkedin = helpers.get_checked_in_students(
         date=current_time.strftime('%Y-%m-%d'),
@@ -43,11 +45,24 @@ else:
     df_already_checkedin = st.session_state[cache_name_checkin]
     print(f'Using data from cache {cache_name_checkin}')
 
+# Checkout data
+if refresh_cache or (cache_name_checkout not in st.session_state):
+    df_already_checkedout = helpers.get_checked_out_students(
+        date=current_time.strftime('%Y-%m-%d'),
+        time_period=time_period,
+    )
+    st.session_state[cache_name_checkout] = df_already_checkedout
+else:
+    df_already_checkedout = st.session_state[cache_name_checkout]
+
 ############
 
 st.title('Student Check-In')
 
-
+n_current_students = len(df_already_checkedin) - len(df_already_checkedout)
+st.subheader(f'# of kids currently in the nest: {n_current_students}')
+st.write(f'{len(df_already_checkedin)} checked in today')
+st.write(f'{len(df_already_checkedout)} checked out today')
 
 st.subheader(
     f'Check-in for **{current_time.date()}** *{time_period}*'

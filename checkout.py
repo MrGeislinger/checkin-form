@@ -56,6 +56,12 @@ else:
 
 
 st.title('Check Out Students ')
+
+n_current_students = len(df_already_checkedin) - len(df_already_checkedout)
+st.subheader(f'# of kids currently in the nest: {n_current_students}')
+st.write(f'{len(df_already_checkedin)} checked in today')
+st.write(f'{len(df_already_checkedout)} checked out today')
+
 st.subheader(
     f'Check-out for **{current_time.date()}** *{time_period}*'
 )
