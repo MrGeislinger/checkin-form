@@ -6,7 +6,7 @@ from streamlit_gsheets import GSheetsConnection
 import time
 from zoneinfo import ZoneInfo
 
-
+refresh_cache: bool = False
 current_time = datetime.datetime.now(tz=ZoneInfo('America/Los_Angeles'))
 time_period = (
     helpers.TimePeriod.MORNING
@@ -14,31 +14,43 @@ time_period = (
     else helpers.TimePeriod.AFTERNOON
 )
 
-# Session state default if first time opening up app
-if 'last_check_in_time' not in st.session_state:
-    st.session_state['last_check_in_time'] = None
-if 'last_check_out_time' not in st.session_state:
-    st.session_state['last_check_out_time'] = current_time.timestamp()
 if 'checkout_conn' not in st.session_state:
     st.session_state['checkout_conn'] = helpers.create_connection(
         name='checkout',
     )
-print(f'{st.session_state.last_check_in_time=}')
-print(f'{st.session_state.last_check_out_time=}')
+
+if st.session_state.get('time_period', None) != time_period:
+    st.session_state['time_period'] = time_period
+    print(f'Cache: New time period {time_period}')
+
+# If new date, refresh cache
+if st.session_state.get('last_date', None) != current_time.strftime('%Y-%m-%d'):
+    st.session_state['last_date'] = current_time.strftime('%Y-%m-%d')
+    print(f'Cache: New date {current_time.strftime("%Y-%m-%d")}')
+    refresh_cache = True
 
 
-df_already_checkedin = helpers.get_checked_in_students(
-    last_check_in_time=st.session_state['last_check_in_time'],
-    date=current_time.strftime('%Y-%m-%d'),
-    time_period=time_period,
-)
+cache_name_checkin = f'checkedin_df_{st.session_state["time_period"]}'
+cache_name_checkout = f'checkedout_df_{st.session_state["time_period"]}'
 
+if refresh_cache or (cache_name_checkin not in st.session_state):
+    df_already_checkedin = helpers.get_checked_in_students(
+        date=current_time.strftime('%Y-%m-%d'),
+        time_period=time_period,
+    )
+    st.session_state[cache_name_checkin] = df_already_checkedin
+else:
+    df_already_checkedin = st.session_state[cache_name_checkin]
 
-df_already_checkedout = helpers.get_checked_out_students(
-    last_check_out_time=st.session_state['last_check_out_time'],
-    date=current_time.strftime('%Y-%m-%d'),
-    time_period=time_period,
-)
+if refresh_cache or (cache_name_checkout not in st.session_state):
+    df_already_checkedout = helpers.get_checked_out_students(
+        date=current_time.strftime('%Y-%m-%d'),
+        time_period=time_period,
+    )
+    st.session_state[cache_name_checkout] = df_already_checkedout
+else:
+    df_already_checkedout = st.session_state[cache_name_checkout]
+
 
 ############
 
@@ -105,10 +117,16 @@ with st.form(key='checkout_form'):
                 spreadsheet_url=st.secrets.connections.checkout.spreadsheet,
                 worksheet='checkouts',
             )
-            # Update that a check out occurred
-            st.session_state['last_check_out_time'] = submit_time
 
-            refresh_time_secs = 5
+            # Mutate already checked-in for cache
+            st.session_state[cache_name_checkout] = pd.concat(
+                [
+                    df_already_checkedout,
+                    df_checkout,
+                ]
+            )
+
+            refresh_time_secs = 2
             results_container.success('Students checked out successfully!')
             results_container.write(
                 f'*Waiting {refresh_time_secs} seconds before refreshing page*'

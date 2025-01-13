@@ -6,6 +6,7 @@ from streamlit_gsheets import GSheetsConnection
 import time
 from zoneinfo import ZoneInfo
 
+refresh_cache: bool = False
 current_time = datetime.datetime.now(tz=ZoneInfo('America/Los_Angeles'))
 time_period = (
     helpers.TimePeriod.MORNING
@@ -14,22 +15,33 @@ time_period = (
 )
 
 # Session state to track the last time a check in was done
-if 'last_check_in_time' not in st.session_state:
-    st.session_state['last_check_in_time'] = None
-if 'last_check_out_time' not in st.session_state:
-    st.session_state['last_check_out_time'] = current_time.timestamp()
 if 'checkin_conn' not in st.session_state:
     st.session_state['checkin_conn'] = helpers.create_connection(
         name='checkin',
     )
-print(f'{st.session_state.last_check_in_time=}')
-print(f'{st.session_state.last_check_out_time=}')
 
-df_already_checkedin = helpers.get_checked_in_students(
-    last_check_in_time=st.session_state['last_check_in_time'],
-    date=current_time.strftime('%Y-%m-%d'),
-    time_period=time_period,
-)
+if st.session_state.get('time_period', None) != time_period:
+    st.session_state['time_period'] = time_period
+    print(f'Cache: New time period {time_period}')
+
+# If new date, refresh cache
+if st.session_state.get('last_date', None) != current_time.strftime('%Y-%m-%d'):
+    st.session_state['last_date'] = current_time.strftime('%Y-%m-%d')
+    print(f'Cache: New date {current_time.strftime("%Y-%m-%d")}')
+    refresh_cache = True
+
+cache_name_checkin = f'checkedin_df_{st.session_state["time_period"]}'
+
+if refresh_cache or (cache_name_checkin not in st.session_state):
+    df_already_checkedin = helpers.get_checked_in_students(
+        date=current_time.strftime('%Y-%m-%d'),
+        time_period=time_period,
+    )
+    st.session_state[cache_name_checkin] = df_already_checkedin
+    print(f'Updated cache for {cache_name_checkin}')
+else:
+    df_already_checkedin = st.session_state[cache_name_checkin]
+    print(f'Using data from cache {cache_name_checkin}')
 
 ############
 
@@ -59,7 +71,6 @@ override_checkin_time = None
 with st.form(key='my_form'):
     submitted = st.form_submit_button('Check In')
 
-    
     if is_override:
         now = datetime.datetime.now(
             tz=ZoneInfo('America/Los_Angeles')
@@ -77,11 +88,10 @@ with st.form(key='my_form'):
         )
         print(f'Override: {override_checkin_time=}')
 
-
-    # selected_names = st.multiselect('Names', names['FullName'])
+    # Holds all names in roster
     all_names = {}
 
-    # Display each name grouped by last name so a section appears for each last name letter
+    # Display each name grouped by last name (each its own section)
     for letter in last_name_letters:
         st.subheader(letter)
         filtered_names = names[names['LastName'].str.startswith(letter)]
@@ -97,7 +107,7 @@ with st.form(key='my_form'):
             )
             if is_already_checked_in:
                 label_info = f'~~{name}~~'
-                # Time checked in is DF's either override or if empty, submittime
+                # Time checked in DF's either override or if empty, submit time
                 time_checkedin = (
                     df_already_checkedin
                     [df_already_checkedin['FullName'] == name]
@@ -114,10 +124,10 @@ with st.form(key='my_form'):
                         .values[0]
                     )
 
-                
                 label_info += f' [{time_checkedin}]'
             else:
                 label_info = f'{name}'
+
             is_student_checked = col.checkbox(
                 label=label_info,
                 key=name,
@@ -167,6 +177,7 @@ with st.form(key='my_form'):
 
             
         if new_checkins_data:
+            print('New Checkin data')
             df_new_checkins = (
                 pd.DataFrame(
                     new_checkins_data,
@@ -191,7 +202,6 @@ with st.form(key='my_form'):
             ]
             df_new_checkins = df_new_checkins[columns]
 
-
             # Convert DF to a list of list (we can ignore the header)
             helpers.append_data_to_sheet(
                 conn=st.session_state['checkin_conn'],
@@ -202,16 +212,23 @@ with st.form(key='my_form'):
                 worksheet='checkins',
             )
 
-            # Update that a check in occurred
-            st.session_state['last_check_in_time'] = submit_time
+            # Mutate already checked-in for cache
+            st.session_state[cache_name_checkin] = pd.concat(
+                [
+                    df_already_checkedin,
+                    df_new_checkins,
+                ]
+            )
     
             results_container.success('Students checked in successfully!')
             results_container.write('Updated with new check-ins:')
-            # Make sure we refresh to reflect changes
-            refresh_time_secs = 5
-            results_container.write(
-                f'*Waiting {refresh_time_secs} seconds before refreshing page*'
-            )
-            results_container.write(df_new_checkins)
-            time.sleep(refresh_time_secs)
-            st.rerun(scope='app')
+            
+        # Make sure we refresh to reflect changes
+        refresh_time_secs = 2
+        results_container.write(
+            f'*Waiting {refresh_time_secs} seconds before refreshing page*'
+        )
+        results_container.write(df_new_checkins)
+        time.sleep(refresh_time_secs)
+        st.rerun()
+        print('Never refreshed')

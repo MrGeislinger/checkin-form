@@ -4,44 +4,28 @@ import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 from zoneinfo import ZoneInfo
 
+refresh_cache: bool = False
 current_time = datetime.datetime.now(tz=ZoneInfo('America/Los_Angeles'))
 
-# Session state default if first time opening up app
-if 'last_check_in_time' not in st.session_state:
-    st.session_state['last_check_in_time'] = None
-if 'last_check_out_time' not in st.session_state:
-    st.session_state['last_check_out_time'] = current_time.timestamp()
-if 'checkout_conn' not in st.session_state:
-    st.session_state['checkout_conn'] = helpers.create_connection(
-        name='checkout',
-    )
-print(f'{st.session_state.last_check_in_time=}')
-print(f'{st.session_state.last_check_out_time=}')
+# If new date, refresh cache
+if st.session_state.get('last_date', None) != current_time.strftime('%Y-%m-%d'):
+    st.session_state['last_period'] = current_time.strftime('%Y-%m-%d')
+    print(f'Cache: New date {current_time.strftime("%Y-%m-%d")}')
+    refresh_cache = True
 
-df_already_checkedin_morning = helpers.get_checked_in_students(
-    date=current_time.strftime('%Y-%m-%d'),
-    time_period=helpers.TimePeriod.MORNING,
-    last_check_in_time=st.session_state['last_check_in_time'],
-)
+for data_type in ('checkedin', 'checkedout'):
+    for time_period in (helpers.TimePeriod.MORNING, helpers.TimePeriod.AFTERNOON):
+        cache_name = f'{data_type}_df_{time_period}'
+        if refresh_cache or (cache_name not in st.session_state):
+            st.session_state[cache_name] = helpers.get_checked_in_students(
+                date=current_time.strftime('%Y-%m-%d'),
+                time_period=time_period,
+            )
 
-df_already_checkedin_afternoon = helpers.get_checked_in_students(
-    date=current_time.strftime('%Y-%m-%d'),
-    time_period=helpers.TimePeriod.AFTERNOON,
-    last_check_in_time=st.session_state['last_check_in_time'],
-)
-
-
-df_already_checkedout_morning = helpers.get_checked_out_students(
-    date=current_time.strftime('%Y-%m-%d'),
-    time_period=helpers.TimePeriod.MORNING,
-    last_check_out_time=st.session_state['last_check_out_time'],
-)
-
-df_already_checkedout_afternoon = helpers.get_checked_out_students(
-    date=current_time.strftime('%Y-%m-%d'),
-    time_period=helpers.TimePeriod.AFTERNOON,
-    last_check_out_time=st.session_state['last_check_out_time'],
-)
+df_already_checkedin_morning = st.session_state['checkedin_df_morning']
+df_already_checkedin_afternoon = st.session_state['checkedin_df_afternoon']
+df_already_checkedout_morning = st.session_state['checkedout_df_morning']
+df_already_checkedout_afternoon = st.session_state['checkedout_df_afternoon']
 
 ######
 

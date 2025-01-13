@@ -17,9 +17,8 @@ class TimePeriod(Enum):
     def __str__(self):
         return self.value
 
-@st.cache_data(
+@st.cache_resource(
     max_entries=1,
-    persist=True,
     show_spinner='Fetching Student Roster'
 )
 def get_student_roster(
@@ -42,7 +41,7 @@ def get_student_roster(
 def create_connection(
     name: str = 'gsheets',
     cache_ttl_secs: float = SECS_IN_DAY,
-):
+) -> GSheetsConnection:
     """Creates a connection to a data source.
 
     Args:        
@@ -82,7 +81,6 @@ def dataframe_to_list(
     ]
     return data_clean
 
-
 def append_data_to_sheet(
     conn: GSheetsConnection,
     data: Iterable[list[str]],
@@ -107,18 +105,13 @@ def append_data_to_sheet(
     # Append all rows of data
     sh.append_rows(values=data)
 
-@st.cache_data(
-    show_spinner='Fetching checked in students',
-)
 def get_checked_in_students(
-    last_check_in_time: float,
     date: str,
     time_period: TimePeriod,
     spreadsheet: str = 'checkin',
     worksheet: str = 'checkins',
-    cache_ttl_secs: int | None = None,
 ):
-    print(f'Prior check in time: {last_check_in_time}')
+    print('Getting checked in students')
     conn_to_gsheet = create_connection(
         name=spreadsheet,
     )
@@ -127,22 +120,19 @@ def get_checked_in_students(
         worksheet=worksheet,
         time_period=time_period,
         date=date,
-        cache_ttl_secs=cache_ttl_secs,
     )
+    # DEBUG
+    print(df.shape)
+    print(df.FullName)
     return df
 
-@st.cache_data(
-    show_spinner='Fetching checked out students',
-)
 def get_checked_out_students(
-    last_check_out_time: float,
     date: str,
     time_period: TimePeriod,
     spreadsheet: str = 'checkout',
     worksheet: str = 'checkouts',
-    cache_ttl_secs: int | None = None,
 ):
-    print(f'Prior check out time: {last_check_out_time}')
+    print('Getting checked out students')
     conn_to_gsheet = create_connection(
         name=spreadsheet,
     )
@@ -151,16 +141,15 @@ def get_checked_out_students(
         worksheet=worksheet,
         time_period=time_period,
         date=date,
-        cache_ttl_secs=cache_ttl_secs,
+        # cache_ttl_secs=cache_ttl_secs,
     )
     return df
 
 def get_students(
-    conn,
+    conn: GSheetsConnection,
     worksheet: str | int | None = None,
     time_period: TimePeriod = TimePeriod.MORNING,
     date: datetime.datetime = None,
-    cache_ttl_secs: float = 30,
 ) -> pd.DataFrame:
     """Gets the students already checked in via a data source
 
@@ -176,7 +165,7 @@ def get_students(
     # Create a connection object for the data base
     df = conn.read(
         worksheet=worksheet,
-        ttl=cache_ttl_secs,
+        ttl=0,  # Always reset cache
     )
     # Filter only the date specified
     if date:
@@ -188,7 +177,6 @@ def get_students(
         df = df[pd.to_datetime(df['SubmitTime']).dt.hour < 9]
     elif time_period == TimePeriod.AFTERNOON:
         df = df[pd.to_datetime(df['SubmitTime']).dt.hour >= 9]
-
 
     return df
 
