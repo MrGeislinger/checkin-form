@@ -178,5 +178,14 @@ def get_students(
     elif time_period == TimePeriod.AFTERNOON:
         df = df[pd.to_datetime(df['SubmitTime']).dt.hour >= 9]
 
+    # Remove duplicate names (keeping the time first entered)
+    df = df.sort_values(by='SubmitTime')
+    df = df.drop_duplicates(
+        subset=[
+            'FullName',
+            'SubmitDate',
+        ],
+        keep='first',
+    )
+    
     return df
-
