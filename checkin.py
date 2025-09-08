@@ -271,13 +271,7 @@ with st.form(key='my_form'):
                 by=[
                     'LastName',
                     'FirstName',
-                    'Grade',
                 ],
-                ascending=[
-                    True,
-                    True,
-                    False,
-                ]
             )[
                 [
                     'FullName',
@@ -291,6 +285,11 @@ with st.form(key='my_form'):
     submitted = st.form_submit_button('Check In')
 
     if submitted:
+        # Remove the session state of submitted from full_names
+        for name in full_names:
+            session_state_status = st.session_state.get(f'status-{name}')
+            if session_state_status is not None:
+                st.session_state[f'status-{name}'] = False
         # Track time of actual submission
         submit_time = (
             datetime.datetime.now(
@@ -378,6 +377,8 @@ with st.form(key='my_form'):
             f'*Waiting {refresh_time_secs} seconds before refreshing page*'
         )
         results_container.write(df_new_checkins)
+        # Reset the what is displayed to be 'checked in'
+        full_names = []
         time.sleep(refresh_time_secs)
         st.rerun()
         print('Never refreshed')
