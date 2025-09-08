@@ -189,3 +189,12 @@ def get_students(
     )
     
     return df
+
+def sync_main_state(main_key, widget_key):
+    """Updates the main state from the widget that was just clicked.
+
+    Args:
+       main_key: Key to the main value to be used.
+       widget_key: Key to the widget value (changed in UI).    
+    """
+    st.session_state[main_key] = st.session_state[widget_key]
