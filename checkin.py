@@ -323,6 +323,7 @@ with st.form(key='my_form'):
             )
             new_checkins_data.append(student_data)
 
+            
         if new_checkins_data:
             print('New Checkin data')
             df_new_checkins = (
@@ -369,8 +370,7 @@ with st.form(key='my_form'):
     
             results_container.success('Students checked in successfully!')
             results_container.write('Updated with new check-ins:')
-        else:
-            df_new_checkins = None    
+            
         # Make sure we refresh to reflect changes
         refresh_time_secs = 2
         results_container.write(

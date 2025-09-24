@@ -80,27 +80,6 @@ df_to_checkout = df_already_checkedin[
 
 results_container = st.container()
 
-# Override time option they were checked out. Defaults to current time
-is_override = st.checkbox('Override Time')
-override_checkout_time = None
-
-if is_override:
-    now = datetime.datetime.now(
-        tz=ZoneInfo('America/Los_Angeles')
-    )
-    print(f'Datetime: {now=}')
-    time_inc_minute = 10
-    override_checkout_time = st.time_input(
-        label='Check-out Time',
-        value=datetime.time(
-            hour=now.hour,
-            minute=(now.minute // time_inc_minute)*time_inc_minute,
-            tzinfo=ZoneInfo('America/Los_Angeles')
-        ),
-        step=datetime.timedelta(minutes=time_inc_minute),
-    )
-    print(f'Override: {override_checkout_time=}')
-
 with st.form(key='checkout_form'):
     selected_names = st.multiselect(
         'Select students to check out',
@@ -124,9 +103,7 @@ with st.form(key='checkout_form'):
                 student_data['Grade'] = str(info['Grade'].values[0])
                 student_data['SubmitTime'] = submit_time.strftime('%H:%M:%S')
                 student_data['SubmitDate'] = current_time.strftime('%Y-%m-%d')
-                student_data['OverrideTime'] = (
-                    None if not is_override else override_checkout_time
-                )
+                student_data['OverrideTime'] = None
                 checkout_data.append(student_data)
 
             df_checkout = pd.DataFrame(checkout_data).astype({'Grade': str})
