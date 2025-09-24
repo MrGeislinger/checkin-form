@@ -323,7 +323,7 @@ with st.form(key='my_form'):
             )
             new_checkins_data.append(student_data)
 
-            
+        df_new_checkins = None  
         if new_checkins_data:
             print('New Checkin data')
             df_new_checkins = (
