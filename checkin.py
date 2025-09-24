@@ -376,7 +376,7 @@ with st.form(key='my_form'):
         results_container.write(
             f'*Waiting {refresh_time_secs} seconds before refreshing page*'
         )
-        results_container.write(df_new_checkins)
+        # results_container.write(df_new_checkins)
         # Reset the what is displayed to be 'checked in'
         full_names = []
         time.sleep(refresh_time_secs)
