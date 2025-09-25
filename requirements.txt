@@ -1,2 +1,1 @@
 st-gsheets-connection
-streamlit==1.49.1
