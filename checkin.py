@@ -6,6 +6,8 @@ from streamlit_gsheets import GSheetsConnection
 import time
 from zoneinfo import ZoneInfo
 
+print(f'Streamlit version: {st.__version__=}')
+
 refresh_cache: bool = False
 current_time = datetime.datetime.now(tz=ZoneInfo('America/Los_Angeles'))
 time_period = (
