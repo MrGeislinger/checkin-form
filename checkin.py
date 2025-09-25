@@ -323,7 +323,10 @@ with st.form(key='my_form'):
             )
             new_checkins_data.append(student_data)
 
-            
+        # Debugging session state
+        print(f'Session State \n{st.session_state}')
+
+
         if new_checkins_data:
             print('New Checkin data')
             df_new_checkins = (
@@ -370,13 +373,19 @@ with st.form(key='my_form'):
     
             results_container.success('Students checked in successfully!')
             results_container.write('Updated with new check-ins:')
+        else:
+            print('No new checkin data')
+            print(new_checkins_data)
+            print(f'all_names\n{all_names}')
+            df_new_checkins = None
+            
             
         # Make sure we refresh to reflect changes
         refresh_time_secs = 2
         results_container.write(
             f'*Waiting {refresh_time_secs} seconds before refreshing page*'
         )
-        # results_container.write(df_new_checkins)
+        results_container.write(df_new_checkins)
         # Reset the what is displayed to be 'checked in'
         full_names = []
         time.sleep(refresh_time_secs)
