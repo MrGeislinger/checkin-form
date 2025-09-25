@@ -18,10 +18,8 @@ time_period = (
 
 # Session state to track the last time a check in was done
 if 'checkin_conn' not in st.session_state:
-    # Ensure the cache doesn't live too long & cause issues from time period
     st.session_state['checkin_conn'] = helpers.create_connection(
         name='checkin',
-        cache_ttl_secs=(3 * helpers.SECS_IN_HOUR),
     )
 
 if st.session_state.get('time_period', None) != time_period:

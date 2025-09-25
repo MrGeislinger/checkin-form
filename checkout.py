@@ -15,10 +15,8 @@ time_period = (
 )
 
 if 'checkout_conn' not in st.session_state:
-    # Ensure the cache doesn't live too long & cause issues from time period
     st.session_state['checkout_conn'] = helpers.create_connection(
         name='checkout',
-        cache_ttl_secs=(3 * helpers.SECS_IN_HOUR),
     )
 
 if st.session_state.get('time_period', None) != time_period:
