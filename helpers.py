@@ -438,3 +438,34 @@ def get_corrections(
     ).dt.strftime('%H:%M')
 
     return df_corrections_final
+
+def sync_main_state(main_key, widget_key):
+    """Updates the main state from the widget that was just clicked.
+
+    Args:
+       main_key: Key to the main value to be used.
+       widget_key: Key to the widget value (changed in UI).
+    """
+    new_value = st.session_state[widget_key]
+    st.session_state[main_key] = new_value
+
+    # We need to ensure that the other widget (on the other tab) also gets updated
+    # implicitly by updating its key in session_state.
+    # The structure of the keys is known to be:
+    # - status-{name}  (main_key)
+    # - check_by_grades_{name}
+    # - check_by_lastname_{name}
+
+    if main_key.startswith('status-'):
+        name = main_key.replace('status-', '', 1)
+
+        grades_key = f'check_by_grades_{name}'
+        lastname_key = f'check_by_lastname_{name}'
+
+        # Update if they exist in session_state, or even if they don't,
+        # it is safer to set them so when the widget renders it picks up the true value.
+        st.session_state[grades_key] = new_value
+        st.session_state[lastname_key] = new_value
+
+    print(f'Synced {main_key} to {widget_key} with value {new_value}')
+    st.rerun()

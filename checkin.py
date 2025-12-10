@@ -66,9 +66,7 @@ st.subheader(f'# of kids currently in the nest: {n_current_students}')
 st.write(f'{len(df_already_checkedin)} checked in today')
 st.write(f'{len(df_already_checkedout)} checked out today')
 
-st.subheader(
-    f'Check-in for **{current_time.date()}** *{time_period}*'
-)
+st.subheader(f'Check-in for **{current_time.date()}** *{time_period}*')
 
 results_container = st.container()
 
@@ -78,36 +76,78 @@ names = helpers.get_student_roster(
 )
 
 last_name_letters = sorted(names['LastName'].str[0].unique())
+# Note this is probably a mixed type
+grades = [grade for grade in names['Grade'].unique()]
 
 
+######
+st.html('<a href="#check-in-the-following">Go To Bottom</a>')
 
-# Override time option they were checked in. Defaults to current time
-is_override = st.checkbox('Override Time')
-override_checkin_time = None
+# Holds all names in roster
+all_names = {}
 
-with st.form(key='my_form'):
-    submitted = st.form_submit_button('Check In')
+st.divider()
 
-    if is_override:
-        now = datetime.datetime.now(
-            tz=ZoneInfo('America/Los_Angeles')
+tab_grade, tab_last_name = st.tabs(['🏫 GRADE', '👤 LAST NAME'])
+
+with tab_grade:
+    for grade in grades:
+        st.subheader(f'Grade {grade}')
+        filtered_names = names[names['Grade'] == grade]
+        filtered_names = filtered_names.sort_values(
+            by=['LastName', 'FirstName'],
         )
-        print(f'Datetime: {now=}')
-        time_inc_minute = 10
-        override_checkin_time = st.time_input(
-            label='Check-in Time',
-            value=datetime.time(
-                hour=now.hour,
-                minute=(now.minute // time_inc_minute)*time_inc_minute,
-                tzinfo=ZoneInfo('America/Los_Angeles')
-            ),
-            step=datetime.timedelta(minutes=time_inc_minute),
-        )
-        print(f'Override: {override_checkin_time=}')
+        # Split names into three columns to be displayed
+        n_cols = 3
+        cols = st.columns(n_cols)
+        # Calculate the total number of names in grouping
+        n_names_in_group = len(filtered_names)
+        # Calculate the number of names per column (rounding up)
+        names_per_col = (n_names_in_group + n_cols - 1) // n_cols
+        col_index = -1
+        for index, name in enumerate(filtered_names['FullName']):
+            if index % names_per_col == 0:
+                col_index += 1
 
-    # Holds all names in roster
-    all_names = {}
+            col = cols[col_index]
+            # Checked in students are not selectable or to be written to DB
+            is_already_checked_in = name in df_already_checkedin['FullName'].values
+            if is_already_checked_in:
+                label_info = f'~~{name}~~'
+                # Time checked in DF's either override or if empty, submit time
+                time_checkedin = df_already_checkedin[
+                    df_already_checkedin['FullName'] == name
+                ]['OverrideTime'].values[0]
 
+                # Check if time_checkedin is nan
+                if pd.isna(time_checkedin):
+                    time_checkedin = df_already_checkedin[
+                        df_already_checkedin['FullName'] == name
+                    ]['SubmitTime'].values[0]
+
+                label_info += f' [{time_checkedin}]'
+            else:
+                label_info = f'{name}'
+
+            is_student_checked = col.checkbox(
+                label=label_info,
+                value=st.session_state.get(f'status-{name}'),
+                key=f'check_by_grades_{name}',
+                on_change=helpers.sync_main_state,
+                args=(
+                    f'status-{name}',  # main value for status
+                    f'check_by_grades_{name}',  # value for this UI widget
+                ),
+                disabled=is_already_checked_in,
+            )
+
+            # Only need to track students already checked in
+            if not is_already_checked_in:
+                all_names[name] = {
+                    'is_checked_in': is_student_checked,
+                }
+        st.divider()
+with tab_last_name:
     # Display each name grouped by last name (each its own section)
     for letter in last_name_letters:
         st.subheader(letter)
@@ -126,30 +166,22 @@ with st.form(key='my_form'):
         for index, name in enumerate(filtered_names['FullName']):
             if index % names_per_col == 0:
                 col_index += 1
-                
+
             col = cols[col_index]
             # Checked in students are not selectable or to be written to DB
-            is_already_checked_in = (
-                name in df_already_checkedin['FullName'].values
-            )
+            is_already_checked_in = name in df_already_checkedin['FullName'].values
             if is_already_checked_in:
                 label_info = f'~~{name}~~'
                 # Time checked in DF's either override or if empty, submit time
-                time_checkedin = (
-                    df_already_checkedin
-                    [df_already_checkedin['FullName'] == name]
-                    ['OverrideTime']
-                    .values[0]
-                )
-                
+                time_checkedin = df_already_checkedin[
+                    df_already_checkedin['FullName'] == name
+                ]['OverrideTime'].values[0]
+
                 # Check if time_checkedin is nan
                 if pd.isna(time_checkedin):
-                    time_checkedin = (
-                        df_already_checkedin
-                        [df_already_checkedin['FullName'] == name]
-                        ['SubmitTime']
-                        .values[0]
-                    )
+                    time_checkedin = df_already_checkedin[
+                        df_already_checkedin['FullName'] == name
+                    ]['SubmitTime'].values[0]
 
                 label_info += f' [{time_checkedin}]'
             else:
@@ -157,8 +189,15 @@ with st.form(key='my_form'):
 
             is_student_checked = col.checkbox(
                 label=label_info,
-                key=name,
-                value=is_already_checked_in,
+                # key=name,
+                key=f'check_by_lastname_{name}',
+                # value=is_already_checked_in,
+                value=st.session_state.get(f'status-{name}'),
+                on_change=helpers.sync_main_state,
+                args=(
+                    f'status-{name}',  # main value for status
+                    f'check_by_lastname_{name}',  # value for this UI widget
+                ),
                 disabled=is_already_checked_in,
             )
             # Only need to track students already checked in
@@ -167,42 +206,91 @@ with st.form(key='my_form'):
                     'is_checked_in': is_student_checked,
                 }
         st.divider()
-    
-    if submitted:
-        # Track time of actual submission
-        submit_time = (
-            datetime.datetime.now(
-                tz=ZoneInfo('America/Los_Angeles'),
-            )
-            .time()
+
+
+################ SUBMISSION FORM ################
+
+st.html('<a href="#student-check-in">Go To Top</a>')
+
+# Override time option they were checked in. Defaults to current time
+is_override = st.checkbox('Override Time')
+override_checkin_time = None
+
+if is_override:
+    now = datetime.datetime.now(tz=ZoneInfo('America/Los_Angeles'))
+    print(f'Datetime: {now=}')
+    time_inc_minute = 10
+    override_checkin_time = st.time_input(
+        label='Check-in Time',
+        value=datetime.time(
+            hour=now.hour,
+            minute=(now.minute // time_inc_minute) * time_inc_minute,
+            tzinfo=ZoneInfo('America/Los_Angeles'),
+        ),
+        step=datetime.timedelta(minutes=time_inc_minute),
+    )
+    print(f'Override: {override_checkin_time=}')
+
+with st.form(key='my_form'):
+    st.write('## Check in the following')
+    # Get full names of checked students to filter on the roster
+    full_names = [
+        state.split('-', maxsplit=1)[1]
+        for state in st.session_state
+        if state.startswith('status-') and st.session_state[state]
+    ]
+    # Only display checked students if they are checked
+    if full_names:
+        st.write(
+            names[names['FullName'].isin(full_names)].sort_values(
+                by=[
+                    'LastName',
+                    'FirstName',
+                ],
+            )[
+                [
+                    'FullName',
+                    'Grade',
+                    'LastName',
+                    'FirstName',
+                ]
+            ]
         )
+
+    submitted = st.form_submit_button('Check In')
+
+    if submitted:
+        # Remove the session state of submitted from full_names
+        for name in full_names:
+            session_state_status = st.session_state.get(f'status-{name}')
+            if session_state_status is not None:
+                st.session_state[f'status-{name}'] = False
+        # Track time of actual submission
+        submit_time = datetime.datetime.now(
+            tz=ZoneInfo('America/Los_Angeles'),
+        ).time()
         st.write(f'Submitted on {submit_time} ')
         st.write(f'{override_checkin_time}')
-        
+
         new_checkins_data: list[dict[str, str]] = []
-        for full_name, student_info in all_names.items():   
+        for full_name, student_info in all_names.items():
             checkedin = student_info['is_checked_in']
             if not checkedin:
                 continue
             info = names[names['FullName'] == full_name]
-            
+
             student_data = {}
             student_data['FullName'] = full_name
             student_data['FirstName'] = info['FirstName'].values[0]
             student_data['LastName'] = info['LastName'].values[0]
             student_data['Grade'] = str(info['Grade'].values[0])
-            student_data['SubmitTime'] = (
-                submit_time.strftime('%H:%M:%S')
-            )
-            student_data['SubmitDate'] = (
-                current_time.strftime('%Y-%m-%d')
-            )
+            student_data['SubmitTime'] = submit_time.strftime('%H:%M:%S')
+            student_data['SubmitDate'] = current_time.strftime('%Y-%m-%d')
             student_data['OverrideTime'] = (
                 None if not is_override else override_checkin_time
             )
             new_checkins_data.append(student_data)
 
-            
         if new_checkins_data:
             print('New Checkin data')
             df_new_checkins = (
@@ -233,9 +321,7 @@ with st.form(key='my_form'):
             helpers.append_data_to_sheet(
                 conn=st.session_state['checkin_conn'],
                 data=helpers.dataframe_to_list(df_new_checkins),
-                spreadsheet_url=(
-                    st.secrets.connections.checkin.spreadsheet
-                ),
+                spreadsheet_url=(st.secrets.connections.checkin.spreadsheet),
                 worksheet='checkins',
             )
 
@@ -246,16 +332,18 @@ with st.form(key='my_form'):
                     df_new_checkins,
                 ]
             )
-    
+
             results_container.success('Students checked in successfully!')
             results_container.write('Updated with new check-ins:')
-            
+
         # Make sure we refresh to reflect changes
         refresh_time_secs = 2
         results_container.write(
             f'*Waiting {refresh_time_secs} seconds before refreshing page*'
         )
         results_container.write(df_new_checkins)
+        # Reset the what is displayed to be 'checked in'
+        full_names = []
         time.sleep(refresh_time_secs)
         st.rerun()
         print('Never refreshed')
